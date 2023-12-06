@@ -1,0 +1,580 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description:  VPC
+
+Resources:
+  #VPC
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: DemoVPC
+  VpcCidrBlockIpv6:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref Vpc
+      AmazonProvidedIpv6CidrBlock: true
+
+  #Gateways
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: demo-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+  NATGateway:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnetAZ1
+      Tags:
+        - Key: Name
+          Value: demo-natgw
+        - Key: apiname
+          Value: demo-priv-nat-1a  
+  ElasticIP:
+   DependsOn: InternetGatewayAttachment
+   Type: AWS::EC2::EIP
+   Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: demo-eip
+  EgressOnlyInternetGateway:
+    Type: AWS::EC2::EgressOnlyInternetGateway
+    Properties: 
+      VpcId: !Ref Vpc
+
+  #Subnets
+  PublicSubnetAZ1:
+    DependsOn: VpcCidrBlockIpv6
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select [ 1, !Cidr [!GetAtt Vpc.CidrBlock, 20, 8 ]]
+      MapPublicIpOnLaunch: true
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: !Select [1, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 15, 64]]
+      PrivateDnsNameOptionsOnLaunch: {"HostnameType": "resource-name","EnableResourceNameDnsARecord": true,"EnableResourceNameDnsAAAARecord": true}
+      Tags:
+        - Key: Name
+          Value: publicsubnetone
+  PublicSubnetAZ2:
+    DependsOn: VpcCidrBlockIpv6
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select [ 2, !Cidr [!GetAtt Vpc.CidrBlock, 20, 8 ]]
+      MapPublicIpOnLaunch: true
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: !Select [2, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 15, 64]]
+      PrivateDnsNameOptionsOnLaunch: {"HostnameType": "resource-name","EnableResourceNameDnsARecord": true,"EnableResourceNameDnsAAAARecord": true}
+      Tags:
+        - Key: Name
+          Value: publicsubnettwo
+  PublicSubnetAZ3:
+    DependsOn: VpcCidrBlockIpv6
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 2
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select [ 3, !Cidr [!GetAtt Vpc.CidrBlock, 20, 8 ]]
+      MapPublicIpOnLaunch: true
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: !Select [3, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 15, 64]]
+      PrivateDnsNameOptionsOnLaunch: {"HostnameType": "resource-name","EnableResourceNameDnsARecord": true,"EnableResourceNameDnsAAAARecord": true}
+      Tags:
+        - Key: Name
+          Value: publicsubnetthree
+  PrivateSubnetAZ1:
+    DependsOn: VpcCidrBlockIpv6
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select [ 11, !Cidr [!GetAtt Vpc.CidrBlock, 20, 8 ]]
+      MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: !Select [11, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 15, 64]]
+      Tags:
+        - Key: Name
+          Value: privatesubnetone
+        - Key: apiname
+          Value: priv-net-1a
+  PrivateSubnetAZ2:
+    DependsOn: VpcCidrBlockIpv6
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select [ 12, !Cidr [!GetAtt Vpc.CidrBlock, 20, 8 ]]
+      MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: !Select [12, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 15, 64]]
+      Tags:
+        - Key: Name
+          Value: privatesubnettwo
+        - Key: apiname
+          Value: priv-net-1b
+  PrivateSubnetAZ3:
+    DependsOn: VpcCidrBlockIpv6
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 2
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select [ 13, !Cidr [!GetAtt Vpc.CidrBlock, 20, 8 ]]
+      MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: !Select [13, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 15, 64]]
+      Tags:
+        - Key: Name
+          Value: privatesubnetthree
+        - Key: apiname
+          Value: priv-net-1c   
+
+  #Route Tables
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: publicroutetable
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway       
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: privateroutetable
+  PrivateRoute:
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId:
+         Ref: PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+         Ref: NATGateway
+ 
+  PublicSubnetAZ1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ1
+  PublicSubnetAZ2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ2
+  PublicSubnetAZ3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetAZ3
+  PrivateSubnetAZ1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetAZ1
+  PrivateSubnetAZ2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetAZ2
+  PrivateSubnetAZ3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetAZ3
+
+  #IPv6Routes
+  IPv6PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationIpv6CidrBlock: ::/0
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref InternetGateway
+  IPv6PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationIpv6CidrBlock: ::/0
+      RouteTableId: !Ref PrivateRouteTable
+      EgressOnlyInternetGatewayId: !Ref EgressOnlyInternetGateway
+
+  #NACL
+  WebSubnetNACL:
+    Type: AWS::EC2::NetworkAcl
+    Properties: 
+      VpcId: !Ref Vpc
+      Tags: 
+      - Key: Name
+        Value: aws-webnacl
+  InboundRuleHTTP:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !GetAtt WebSubnetNACL.Id
+       RuleNumber: 80
+       Protocol: 6
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+       PortRange:
+         From: 80
+         To: 80
+  InboundRuleHTTPIPv6:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !GetAtt WebSubnetNACL.Id
+       RuleNumber: 81
+       Protocol: 6
+       RuleAction: allow
+       Ipv6CidrBlock: ::/0
+       PortRange:
+         From: 80
+         To: 80
+  InboundRuleHTTPS:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !GetAtt WebSubnetNACL.Id
+       RuleNumber: 90
+       Protocol: 6
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+       PortRange:
+         From: 443
+         To: 443
+  InboundRuleHTTPSIPv6:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !GetAtt WebSubnetNACL.Id
+       RuleNumber: 91
+       Protocol: 6
+       RuleAction: allow
+       Ipv6CidrBlock: ::/0
+       PortRange:
+         From: 443
+         To: 443
+  InboundRuleAllTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !GetAtt WebSubnetNACL.Id
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+  InboundRuleAllTrafficIPv6:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !GetAtt WebSubnetNACL.Id
+      RuleNumber: 101
+      Protocol: -1
+      RuleAction: allow
+      Ipv6CidrBlock: ::/0
+  OutboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !GetAtt WebSubnetNACL.Id
+       RuleNumber: 100
+       Protocol: -1
+       Egress: true
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+  OutboundRuleIPv6:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !GetAtt WebSubnetNACL.Id
+       RuleNumber: 101
+       Protocol: -1
+       Egress: true
+       RuleAction: allow
+       Ipv6CidrBlock: ::/0
+  SubnetNetworkAclAssociationSunbetOne:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      NetworkAclId: !GetAtt WebSubnetNACL.Id
+      SubnetId: !GetAtt PrivateSubnetAZ1.SubnetId
+  SubnetNetworkAclAssociationSunbetTwo:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      NetworkAclId: !GetAtt WebSubnetNACL.Id
+      SubnetId: !GetAtt PrivateSubnetAZ2.SubnetId
+  SubnetNetworkAclAssociationSunbetThree:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      NetworkAclId: !GetAtt WebSubnetNACL.Id
+      SubnetId: !GetAtt PrivateSubnetAZ3.SubnetId
+
+  #VPC Endpoints
+  EndpointSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open-up ports for local VPC
+      GroupName: VPCEndpointSecurityGroup
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - CidrIp: !GetAtt Vpc.CidrBlock
+          IpProtocol: -1
+      Tags:
+        - Key: Name
+          Value: VPCEndpointSecurityGroup
+  DynamoDBVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "*"
+            Principal: "*"
+            Resource: "*"
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      ServiceName: !Join ["", ["com.amazonaws.", { "Ref": "AWS::Region" }, ".dynamodb"]]
+      VpcId: !Ref Vpc
+  SNSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "*"
+            Principal: "*"
+            Resource: "*"
+      ServiceName: !Join ["", ["com.amazonaws.", { "Ref": "AWS::Region" }, ".sns"]]
+      SecurityGroupIds: 
+        - !GetAtt EndpointSecGroup.GroupId
+      SubnetIds: 
+        - Ref: PrivateSubnetAZ1
+        - Ref: PrivateSubnetAZ2
+        - Ref: PrivateSubnetAZ3
+      VpcId: !Ref Vpc
+  SQSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "*"
+            Principal: "*"
+            Resource: "*"
+      ServiceName: !Join ["", ["com.amazonaws.", { "Ref": "AWS::Region" }, ".sqs"]]
+      SecurityGroupIds: 
+        - !GetAtt EndpointSecGroup.GroupId
+      SubnetIds: 
+        - Ref: PrivateSubnetAZ1
+        - Ref: PrivateSubnetAZ2
+        - Ref: PrivateSubnetAZ3
+      VpcId: !Ref Vpc
+
+  #Route 53
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      HostedZoneConfig:
+        Comment: Private hosted zone
+      Name: aws.local
+      VPCs:
+        - VPCId: !Ref Vpc
+          VPCRegion: !Ref AWS::Region
+
+  #SecurityGroup
+  ClientSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: ClientSecurityGroup
+      GroupDescription: Access Public SSH Access to EC2
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 1.1.1.1/32
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: InstanceSecurityGroup
+      GroupDescription: Enable SSH access and HTTP from the load balancer only
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt LoadBalancerSecurityGroup.GroupId
+      VpcId: !Ref Vpc
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: LoadBalancerSecurityGroup
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: Enable HTTP access via port 80 IPv6
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+        - Description: Enable HTTPS access via port 443 IPv6
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: ::/0
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: DatabaseSecurityGroup
+      GroupDescription: SQL access from ASG
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !GetAtt InstanceSecurityGroup.GroupId
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !GetAtt ClientSecurityGroup.GroupId
+  FargateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: FargateSecurityGroup
+      GroupDescription: Access to the fargate containers from the Internet
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - CidrIp: 10.0.0.0/8
+          IpProtocol: -1
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt LoadBalancerSecurityGroup.GroupId
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !GetAtt LoadBalancerSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: FargateSecurityGroup
+
+
+Outputs:
+  VpcId:
+    Description: VPC id
+    Value: !Ref Vpc
+    Export:
+      Name: VpcId
+  VpcCidrBlock:
+    Description: VPC's CIDR block
+    Value: !GetAtt Vpc.CidrBlock
+    Export:
+      Name: VpcCidrBlock
+  PublicRouteTable:
+    Description: VPC's public route table id
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: PublicRouteTable
+  PublicSubnetOne:
+    Description: Public Subnet AZ1 Id
+    Value: !Ref PublicSubnetAZ1
+    Export:
+      Name: PublicSubnetOne
+  PublicSubnetTwo:
+    Description: Public Subnet AZ2 Id
+    Value: !Ref PublicSubnetAZ2
+    Export:
+      Name: PublicSubnetTwo
+  PublicSubnetThree:
+    Description: Public Subnet AZ3 Id
+    Value: !Ref PublicSubnetAZ3
+    Export:
+      Name: PublicSubnetThree
+  PrivateSubnetOne:
+    Description: Private Subnet AZ1 Id
+    Value: !Ref PrivateSubnetAZ1
+    Export:
+      Name: PrivateSubnetOne 
+  PrivateSubnetTwo:
+    Description: Private Subnet AZ2 Id
+    Value: !Ref PrivateSubnetAZ2
+    Export:
+      Name: PrivateSubnetTwo
+  PrivateSubnetThree:
+    Description: Private Subnet AZ3 Id
+    Value: !Ref PrivateSubnetAZ3
+    Export:
+      Name: PrivateSubnetThree
+  PrivateRouteTable:
+    Description: Private Route Table AZ1 Id
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: PrivateRouteTable
+  PrivateHostedZone:
+    Description: Private Hosted Zone
+    Value: !Ref PrivateHostedZone
+    Export:
+      Name: PrivateHostedZone
+
+  ClientSecurityGroup:
+    Value: !GetAtt ClientSecurityGroup.GroupId
+    Export:
+      Name: ClientSecurityGroup
+  InstanceSecurityGroup:
+    Value: !GetAtt InstanceSecurityGroup.GroupId
+    Export:
+      Name: InstanceSecurityGroup
+  LoadBalancerSecurityGroup:
+    Value: !GetAtt LoadBalancerSecurityGroup.GroupId
+    Export:
+      Name: LoadBalancerSecurityGroup
+  FargateSecurityGroup:
+    Value: !GetAtt FargateSecurityGroup.GroupId
+    Export:
+      Name: FargateSecurityGroup
+  DBSecurityGroup:
+    Value: !GetAtt DBSecurityGroup.GroupId
+    Export:
+      Name: DBSecurityGroup
